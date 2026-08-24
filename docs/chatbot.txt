@@ -1,0 +1,3 @@
+A chatbot can maintain conversation history so that later turns can refer to earlier messages. Conversation history and retrieved RAG context are different things. Conversation history is persistent state for the chat, while retrieved context should normally be selected again for each new question.
+
+Refreshing retrieval on every turn helps the chatbot stay relevant. If old retrieved chunks are permanently appended to history, unrelated information can remain in the prompt and interfere with later answers. A clean RAG loop retrieves fresh context for each user question.
