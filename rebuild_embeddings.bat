@@ -8,8 +8,8 @@ if not exist ".venv\Scripts\python.exe" (
     exit /b 1
 )
 
-if "%OPENAI_API_KEY%"=="" (
-    echo OPENAI_API_KEY is not set.
+if "%GEMINI_API_KEY%"=="" (
+    echo GEMINI_API_KEY is not set.
     pause
     exit /b 1
 )
