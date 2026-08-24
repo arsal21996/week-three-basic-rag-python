@@ -1,5 +1,6 @@
 import json
 import os
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -18,6 +19,8 @@ GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 TOP_K = 3
 SIMILARITY_THRESHOLD = 0.35
 CHUNK_WORDS = 80
+MAX_RETRIES = 5
+RETRY_BASE_SECONDS = 2
 
 
 SYSTEM_RULE = """You are a grounded RAG assistant.
@@ -41,8 +44,6 @@ def load_env_file():
         key, value = line.split("=", 1)
         key = key.strip()
         value = value.strip().strip('"').strip("'")
-
-        # Existing environment variables take precedence over .env values.
         os.environ.setdefault(key, value)
 
 
@@ -50,6 +51,7 @@ load_env_file()
 
 
 def gemini_request(path, payload):
+    """Call Gemini and retry temporary overload/rate-limit errors."""
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError(
@@ -66,14 +68,39 @@ def gemini_request(path, payload):
         method="POST",
     )
 
-    try:
-        with urllib.request.urlopen(request, timeout=120) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"Gemini API error {exc.code}: {body}") from exc
-    except urllib.error.URLError as exc:
-        raise RuntimeError(f"Network error: {exc.reason}") from exc
+    retryable_statuses = {429, 500, 502, 503, 504}
+
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=120) as response:
+                return json.loads(response.read().decode("utf-8"))
+
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+
+            if exc.code not in retryable_statuses or attempt == MAX_RETRIES:
+                raise RuntimeError(
+                    f"Gemini API error {exc.code}: {body}"
+                ) from exc
+
+            wait_seconds = RETRY_BASE_SECONDS * (2 ** (attempt - 1))
+            print(
+                f"Gemini temporarily unavailable (HTTP {exc.code}). "
+                f"Retrying in {wait_seconds}s "
+                f"({attempt}/{MAX_RETRIES - 1})..."
+            )
+            time.sleep(wait_seconds)
+
+        except urllib.error.URLError as exc:
+            if attempt == MAX_RETRIES:
+                raise RuntimeError(f"Network error: {exc.reason}") from exc
+
+            wait_seconds = RETRY_BASE_SECONDS * (2 ** (attempt - 1))
+            print(
+                f"Network error. Retrying in {wait_seconds}s "
+                f"({attempt}/{MAX_RETRIES - 1})..."
+            )
+            time.sleep(wait_seconds)
 
 
 def embed_texts(texts):
