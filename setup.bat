@@ -24,7 +24,7 @@ if errorlevel 1 goto :error
 
 echo.
 echo Setup complete.
-echo Next: edit run.bat and set your OPENAI_API_KEY, then run run.bat.
+echo Next: set GEMINI_API_KEY and run run.bat.
 pause
 exit /b 0
 
