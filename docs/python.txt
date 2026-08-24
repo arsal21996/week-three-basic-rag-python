@@ -1,0 +1,3 @@
+Python is a high-level programming language known for readable syntax. It is widely used for automation, web development, data analysis, scripting, and artificial intelligence. Python programs are often organized into modules and functions so that code can be reused and tested.
+
+A major strength of Python is its large ecosystem. Developers can use libraries for numerical computing, web applications, machine learning, data processing, and many other tasks. This project intentionally uses only a small amount of Python tooling so the RAG mechanics remain visible.
