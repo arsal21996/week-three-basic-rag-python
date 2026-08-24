@@ -11,8 +11,9 @@ ROOT = Path(__file__).resolve().parent
 DOCS_DIR = ROOT / "docs"
 EMBEDDINGS_FILE = ROOT / "embeddings.json"
 
-EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
-CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-5.2")
+EMBEDDING_MODEL = os.getenv("GEMINI_EMBEDDING_MODEL", "gemini-embedding-001")
+CHAT_MODEL = os.getenv("GEMINI_CHAT_MODEL", "gemini-3.7-flash")
+GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 TOP_K = 3
 SIMILARITY_THRESHOLD = 0.35
 CHUNK_WORDS = 80
@@ -26,18 +27,18 @@ Do not add outside facts.
 """
 
 
-def api_request(endpoint, payload):
-    api_key = os.getenv("OPENAI_API_KEY")
+def gemini_request(path, payload):
+    api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError(
-            "OPENAI_API_KEY is not set. Run: set OPENAI_API_KEY=your-key"
+            "GEMINI_API_KEY is not set. Run: set $env:GEMINI_API_KEY=your-key"
         )
 
     request = urllib.request.Request(
-        f"https://api.openai.com/v1/{endpoint}",
+        f"{GEMINI_API_BASE}/{path}",
         data=json.dumps(payload).encode("utf-8"),
         headers={
-            "Authorization": f"Bearer {api_key}",
+            "x-goog-api-key": api_key,
             "Content-Type": "application/json",
         },
         method="POST",
@@ -48,33 +49,54 @@ def api_request(endpoint, payload):
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"OpenAI API error {exc.code}: {body}") from exc
+        raise RuntimeError(f"Gemini API error {exc.code}: {body}") from exc
     except urllib.error.URLError as exc:
         raise RuntimeError(f"Network error: {exc.reason}") from exc
 
 
-def embed_text(text):
-    result = api_request(
-        "embeddings",
-        {"model": EMBEDDING_MODEL, "input": text},
+def embed_texts(texts):
+    """Embed multiple texts in one Gemini batch request."""
+    if not texts:
+        return []
+
+    result = gemini_request(
+        f"models/{EMBEDDING_MODEL}:batchEmbedContents",
+        {
+            "requests": [
+                {
+                    "model": f"models/{EMBEDDING_MODEL}",
+                    "content": {"parts": [{"text": text}]},
+                }
+                for text in texts
+            ]
+        },
     )
-    return result["data"][0]["embedding"]
+    return [item["values"] for item in result["embeddings"]]
+
+
+def embed_text(text):
+    return embed_texts([text])[0]
 
 
 def generate_text(prompt):
-    result = api_request(
-        "responses",
-        {"model": CHAT_MODEL, "input": prompt},
+    result = gemini_request(
+        f"models/{CHAT_MODEL}:generateContent",
+        {
+            "contents": [
+                {
+                    "role": "user",
+                    "parts": [{"text": prompt}],
+                }
+            ]
+        },
     )
-    if result.get("output_text"):
-        return result["output_text"]
 
-    pieces = []
-    for item in result.get("output", []):
-        for content in item.get("content", []):
-            if content.get("type") == "output_text":
-                pieces.append(content.get("text", ""))
-    return "\n".join(pieces).strip()
+    candidates = result.get("candidates", [])
+    if not candidates:
+        return ""
+
+    parts = candidates[0].get("content", {}).get("parts", [])
+    return "\n".join(part.get("text", "") for part in parts).strip()
 
 
 def chunk_text(text, words_per_chunk=CHUNK_WORDS):
@@ -104,9 +126,13 @@ def build_chunks():
                     "source": filename,
                     "chunk_id": chunk_id,
                     "text": chunk,
-                    "embedding": embed_text(chunk),
                 }
             )
+
+    embeddings = embed_texts([chunk["text"] for chunk in chunks])
+    for chunk, embedding in zip(chunks, embeddings):
+        chunk["embedding"] = embedding
+
     return chunks
 
 
