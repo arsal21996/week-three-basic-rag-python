@@ -1,0 +1,3 @@
+Vector search finds items whose embedding vectors are close to a query vector. A simple implementation can compare the query with every stored vector and sort the results by similarity. This approach is easy to understand and works well for small collections.
+
+Large systems need more efficient search. FAISS and vector databases can build indexes that avoid checking every vector for every query. They can also provide persistence, filtering, updates, and other features needed by production applications.
