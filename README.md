@@ -29,9 +29,7 @@ The goal is to see the mechanics of RAG instead of hiding them behind LangChain,
 - No vector database
 - No Gemini Python SDK
 
-The only third-party Python dependency is NumPy, which is used for the cosine-similarity calculation. The Gemini calls are raw HTTP requests so the retrieval mechanics remain visible.
-
-The project uses Gemini's `gemini-embedding-001` embedding model and a configurable Gemini generation model, defaulting to `gemini-3.7-flash`.
+The only third-party Python dependency is NumPy. Gemini calls are raw HTTP requests so the retrieval mechanics remain visible.
 
 ## Project structure
 
@@ -48,10 +46,11 @@ week-three-basic-rag-python/
 ├── setup.bat
 ├── run.bat
 ├── rebuild_embeddings.bat
+├── .env.example
 └── README.md
 ```
 
-`embeddings.json` is created locally on the first successful run. It is intentionally not included in the repository because it contains generated vectors and can be regenerated from the source documents.
+`embeddings.json` and `.env` are local files and are ignored by Git. `embeddings.json` is generated from the documents; `.env` contains your secret API key.
 
 ## Windows quick start
 
@@ -61,21 +60,23 @@ Create a Gemini API key in Google AI Studio:
 
 https://aistudio.google.com/app/apikey
 
-### 2. Set the key
+### 2. Create your local `.env`
 
-In PowerShell:
+Copy `.env.example` to `.env`:
 
 ```powershell
-$env:GEMINI_API_KEY="your-gemini-api-key"
+Copy-Item .env.example .env
 ```
 
-Or in Command Prompt:
+Then open `.env` and replace the placeholder:
 
-```cmd
-set GEMINI_API_KEY=your-gemini-api-key
+```text
+GEMINI_API_KEY=your-real-gemini-api-key
 ```
 
-Keep the key out of Git. Do not put it inside `rag.py`, `run.bat`, or any committed file.
+You only need to do this **once**. The Python program loads `.env` automatically every time it starts. No environment variable command is required for normal use.
+
+**Never commit `.env` to GitHub. It is already listed in `.gitignore`.**
 
 ### 3. Run setup
 
@@ -89,10 +90,10 @@ This creates `.venv` and installs NumPy.
 
 ### 4. Run the project
 
-From the same PowerShell session where you set `GEMINI_API_KEY`:
+Double-click:
 
-```powershell
-.\run.bat
+```text
+run.bat
 ```
 
 The first run generates document embeddings and saves them to `embeddings.json`. Later runs load that file instead of regenerating document embeddings.
@@ -174,19 +175,6 @@ There is no universal correct threshold. Run the demo, inspect the printed score
 ## Adding your own documents
 
 Put `.txt` files into `docs/`. The program automatically loads them. If you change the documents, rebuild the cached embeddings with `rebuild_embeddings.bat`.
-
-## Changing Gemini models
-
-You can override the defaults without editing the code:
-
-PowerShell:
-
-```powershell
-$env:GEMINI_CHAT_MODEL="gemini-3.7-flash"
-$env:GEMINI_EMBEDDING_MODEL="gemini-embedding-001"
-```
-
-The code uses Gemini's batch embedding endpoint for the document chunks, so the initial indexing makes one embedding request for the whole chunk set rather than one request per chunk.
 
 ## Notes
 
