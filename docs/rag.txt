@@ -1,0 +1,3 @@
+Retrieval-Augmented Generation, or RAG, combines retrieval with language generation. A RAG system first searches a collection for relevant text and then supplies the retrieved text to a language model as context. The model can use that context to produce a grounded answer.
+
+Grounding is useful when an application needs answers based on a specific collection of documents. The retrieval step does not write the answer; it finds useful evidence. The language model then turns that evidence into a natural-language response.
