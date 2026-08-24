@@ -10,9 +10,10 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent
 DOCS_DIR = ROOT / "docs"
 EMBEDDINGS_FILE = ROOT / "embeddings.json"
+ENV_FILE = ROOT / ".env"
 
-EMBEDDING_MODEL = os.getenv("GEMINI_EMBEDDING_MODEL", "gemini-embedding-001")
-CHAT_MODEL = os.getenv("GEMINI_CHAT_MODEL", "gemini-3.7-flash")
+EMBEDDING_MODEL = "gemini-embedding-001"
+CHAT_MODEL = "gemini-3.7-flash"
 GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 TOP_K = 3
 SIMILARITY_THRESHOLD = 0.35
@@ -27,11 +28,32 @@ Do not add outside facts.
 """
 
 
+def load_env_file():
+    """Load simple KEY=VALUE pairs from a local .env file."""
+    if not ENV_FILE.exists():
+        return
+
+    for raw_line in ENV_FILE.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+
+        # Existing environment variables take precedence over .env values.
+        os.environ.setdefault(key, value)
+
+
+load_env_file()
+
+
 def gemini_request(path, payload):
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError(
-            "GEMINI_API_KEY is not set. Run: set $env:GEMINI_API_KEY=your-key"
+            "GEMINI_API_KEY is not set. Add GEMINI_API_KEY=your-key to .env"
         )
 
     request = urllib.request.Request(
