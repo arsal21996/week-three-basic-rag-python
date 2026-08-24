@@ -1,5 +1,4 @@
 import json
-import math
 import os
 import urllib.error
 import urllib.request
@@ -12,8 +11,8 @@ ROOT = Path(__file__).resolve().parent
 DOCS_DIR = ROOT / "docs"
 EMBEDDINGS_FILE = ROOT / "embeddings.json"
 
-EMBEDDING_MODEL = "text-embedding-3-small"
-CHAT_MODEL = "gpt-5.6-luna"
+EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
+CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-5.2")
 TOP_K = 3
 SIMILARITY_THRESHOLD = 0.35
 CHUNK_WORDS = 80
@@ -70,7 +69,6 @@ def generate_text(prompt):
     if result.get("output_text"):
         return result["output_text"]
 
-    # Defensive fallback for response payloads where output_text is absent.
     pieces = []
     for item in result.get("output", []):
         for content in item.get("content", []):
