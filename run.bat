@@ -9,11 +9,11 @@ if not exist ".venv\Scripts\python.exe" (
     exit /b 1
 )
 
-if "%OPENAI_API_KEY%"=="" (
-    echo OPENAI_API_KEY is not set.
+if "%GEMINI_API_KEY%"=="" (
+    echo GEMINI_API_KEY is not set.
     echo.
-    echo PowerShell: $env:OPENAI_API_KEY="your-key"
-    echo Command Prompt: set OPENAI_API_KEY=your-key
+    echo PowerShell: $env:GEMINI_API_KEY="your-key"
+    echo Command Prompt: set GEMINI_API_KEY=your-key
     echo Then run run.bat again.
     pause
     exit /b 1
