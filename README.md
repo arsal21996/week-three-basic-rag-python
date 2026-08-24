@@ -7,13 +7,13 @@ The goal is to see the mechanics of RAG instead of hiding them behind LangChain,
 ## What this project does
 
 1. Loads five short `.txt` documents.
-2. Chunks each document by a simple word-count function.
-3. Generates an embedding for every chunk.
+2. Chunks each document with a simple word-count function.
+3. Generates Gemini embeddings for each chunk.
 4. Stores `{source, chunk_id, text, embedding}` as a plain Python list and caches it in `embeddings.json`.
-5. Embeds a user query.
+5. Embeds a user query with Gemini.
 6. Computes cosine similarity against every stored chunk with NumPy.
 7. Prints the top 3 matches and their similarity scores.
-8. Sends those top chunks to the LLM as context.
+8. Sends those top chunks to Gemini as context.
 9. Compares an answer with retrieved context against an answer without it.
 10. Tests an unrelated question.
 11. Applies a similarity threshold so irrelevant questions return `I don't know` instead of forcing an answer.
@@ -23,13 +23,15 @@ The goal is to see the mechanics of RAG instead of hiding them behind LangChain,
 
 - Python 3.10+
 - NumPy
-- OpenAI HTTP API via Python's standard `urllib`
+- Gemini API via Python's standard `urllib`
 - No LangChain
 - No FAISS
 - No vector database
-- No OpenAI Python SDK
+- No Gemini Python SDK
 
-The only third-party Python dependency is NumPy, which is used for the cosine-similarity calculation.
+The only third-party Python dependency is NumPy, which is used for the cosine-similarity calculation. The Gemini calls are raw HTTP requests so the retrieval mechanics remain visible.
+
+The project uses Gemini's `gemini-embedding-001` embedding model and a configurable Gemini generation model, defaulting to `gemini-3.7-flash`.
 
 ## Project structure
 
@@ -53,22 +55,24 @@ week-three-basic-rag-python/
 
 ## Windows quick start
 
-### 1. Get an OpenAI API key
+### 1. Get a Gemini API key
 
-Create an API key in your OpenAI account.
+Create a Gemini API key in Google AI Studio:
+
+https://aistudio.google.com/app/apikey
 
 ### 2. Set the key
 
 In PowerShell:
 
 ```powershell
-$env:OPENAI_API_KEY="your-api-key"
+$env:GEMINI_API_KEY="your-gemini-api-key"
 ```
 
 Or in Command Prompt:
 
 ```cmd
-set OPENAI_API_KEY=your-api-key
+set GEMINI_API_KEY=your-gemini-api-key
 ```
 
 Keep the key out of Git. Do not put it inside `rag.py`, `run.bat`, or any committed file.
@@ -85,10 +89,10 @@ This creates `.venv` and installs NumPy.
 
 ### 4. Run the project
 
-Double-click:
+From the same PowerShell session where you set `GEMINI_API_KEY`:
 
-```text
-run.bat
+```powershell
+.\run.bat
 ```
 
 The first run generates document embeddings and saves them to `embeddings.json`. Later runs load that file instead of regenerating document embeddings.
@@ -131,7 +135,7 @@ It then shows:
 
 ## Grounding
 
-Grounding means giving the language model specific external information that it should use as the basis for its answer. In this project, the embedding model does not answer the question. It converts each document chunk and the user's query into vectors so we can find chunks that are semantically close to the query. Those retrieved chunks are then inserted into the LLM prompt. The model is instructed to answer only from that supplied context. This makes the answer grounded in the selected documents instead of asking the model to rely only on its general learned knowledge. The similarity threshold adds another guardrail: if the best matching chunk is not similar enough, the application refuses to answer from irrelevant context.
+Grounding means giving the language model specific external information that it should use as the basis for its answer. In this project, the embedding model does not answer the question. It converts each document chunk and the user's query into vectors so we can find chunks that are semantically close to the query. Those retrieved chunks are then inserted into the Gemini prompt. The model is instructed to answer only from that supplied context. This makes the answer grounded in the selected documents instead of asking the model to rely only on its general learned knowledge. The similarity threshold adds another guardrail: if the best matching chunk is not similar enough, the application refuses to answer from irrelevant context.
 
 This simple implementation does not scale because every query loops over every stored embedding and calculates cosine similarity. That is fine for a handful of chunks, but a collection containing millions of vectors would require millions of comparisons for each query. The JSON file is also only a basic persistence mechanism; it has no efficient vector index, metadata filtering, concurrency model, or production database features. Systems such as FAISS and vector databases use specialized nearest-neighbor indexes and storage systems to make vector retrieval much faster and more manageable at large scale. They can avoid comparing a query against every vector and can provide features for updating, filtering, persistence, and distributed workloads. The important lesson here is that RAG itself is not mysterious: chunk the data, embed it, retrieve the nearest chunks, put them in the prompt, and generate an answer. Production systems mainly improve the storage and retrieval part of that pipeline.
 
@@ -150,7 +154,7 @@ cosine similarity against all chunks
     ↓
 top 3 fresh chunks
     ↓
-LLM prompt
+Gemini prompt
     ↓
 answer
 ```
@@ -170,6 +174,19 @@ There is no universal correct threshold. Run the demo, inspect the printed score
 ## Adding your own documents
 
 Put `.txt` files into `docs/`. The program automatically loads them. If you change the documents, rebuild the cached embeddings with `rebuild_embeddings.bat`.
+
+## Changing Gemini models
+
+You can override the defaults without editing the code:
+
+PowerShell:
+
+```powershell
+$env:GEMINI_CHAT_MODEL="gemini-3.7-flash"
+$env:GEMINI_EMBEDDING_MODEL="gemini-embedding-001"
+```
+
+The code uses Gemini's batch embedding endpoint for the document chunks, so the initial indexing makes one embedding request for the whole chunk set rather than one request per chunk.
 
 ## Notes
 
